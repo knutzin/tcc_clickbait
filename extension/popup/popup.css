@@ -1,0 +1,153 @@
+/* ─── Reset ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Layout geral ───────────────────────────────────────────────────────────── */
+body {
+  width: 300px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: #2c3e50;
+  background: #f8f9fa;
+}
+
+header {
+  background: #2c3e50;
+  color: #fff;
+  padding: 14px 16px;
+}
+
+header h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+main {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+footer {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: #95a5a6;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* ─── Cards ──────────────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #7f8c8d;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+/* ─── Status da API ─────────────────────────────────────────────────────────── */
+.status-text  { font-weight: 600; font-size: 14px; }
+.status-loading { color: #7f8c8d; }
+.status-online  { color: #27ae60; }
+.status-offline { color: #c0392b; }
+
+/* ─── Grid de estatísticas ──────────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.stat-number {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.stat-red { color: #c0392b; }
+
+.stat-desc {
+  font-size: 10px;
+  color: #7f8c8d;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ─── Botões ─────────────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.btn {
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):active { transform: scale(0.98); }
+
+.btn-primary {
+  background: #2980b9;
+  color: #fff;
+}
+
+.btn-primary:not(:disabled):hover { background: #2471a3; }
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #555;
+}
+
+.btn-secondary:not(:disabled):hover { background: #dfe6e9; }
+
+/* ─── Dica offline ───────────────────────────────────────────────────────────── */
+.tip {
+  background: #fef9e7;
+  border: 1px solid #f1c40f;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7d6608;
+}
+
+.tip code {
+  display: block;
+  margin-top: 5px;
+  font-family: "Consolas", "Courier New", monospace;
+  background: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #f1c40f;
+  font-size: 11px;
+  word-break: break-all;
+}

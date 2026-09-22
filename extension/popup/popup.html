@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detector de Clickbait</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>🔍 Detector de Clickbait</h1>
+  </header>
+
+  <main>
+    <!-- Status da API -->
+    <section class="card" id="status-card">
+      <p class="label">Status da API</p>
+      <p id="api-status" class="status-text status-loading">Verificando…</p>
+    </section>
+
+    <!-- Estatísticas da sessão -->
+    <section class="card">
+      <p class="label">Esta sessão</p>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="stat-total" class="stat-number">—</span>
+          <span class="stat-desc">manchetes verificadas</span>
+        </div>
+        <div class="stat">
+          <span id="stat-clickbaits" class="stat-number stat-red">—</span>
+          <span class="stat-desc">clickbaits detectados</span>
+        </div>
+        <div class="stat">
+          <span id="stat-pct" class="stat-number">—</span>
+          <span class="stat-desc">taxa de clickbait</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ações -->
+    <section class="actions">
+      <button id="btn-verificar" class="btn btn-primary">▶ Verificar página agora</button>
+      <button id="btn-reset" class="btn btn-secondary">↺ Zerar contadores</button>
+    </section>
+
+    <!-- Dica quando API está offline -->
+    <section id="offline-tip" class="tip" style="display:none">
+      <strong>API offline.</strong> Inicie com:<br />
+      <code>python model/api.py</code>
+    </section>
+  </main>
+
+  <footer>
+    <p>BERTimbau · TCC Clickbait Detector</p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

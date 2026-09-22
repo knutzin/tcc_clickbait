@@ -1,0 +1,44 @@
+/* ─── Badges de classificação ──────────────────────────────────────────────── */
+
+.cb-badge {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  font-size: 0.72em !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  margin: 0 8px 2px 0 !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  cursor: help !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
+/* Clickbait — vermelho */
+.cb-badge.cb-sim {
+  background-color: #fdecea !important;
+  color: #c0392b !important;
+  border: 1px solid #e74c3c !important;
+}
+
+/* Legítima — verde */
+.cb-badge.cb-nao {
+  background-color: #eafaf1 !important;
+  color: #1e8449 !important;
+  border: 1px solid #27ae60 !important;
+}
+
+/* Wrapper de fallback para estruturas de DOM complexas */
+.cb-badge-wrapper {
+  display: block !important;
+  margin-bottom: 4px !important;
+}

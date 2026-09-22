@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Detector de Clickbait",
+  "version": "1.0.0",
+  "description": "Classifica manchetes de notícias em tempo real usando BERTimbau. Requer a API local rodando em localhost:8000.",
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content_script.js"],
+      "css": ["content/content_style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Detector de Clickbait",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
