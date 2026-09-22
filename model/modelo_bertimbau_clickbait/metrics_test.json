@@ -1,0 +1,12 @@
+{
+  "accuracy": 0.9631650750341064,
+  "balanced_accuracy": 0.9611814588298351,
+  "precision_clickbait": 0.9618573797678275,
+  "recall_clickbait": 0.9492635024549918,
+  "f1_clickbait": 0.9555189456342669,
+  "cohen_kappa": 0.9240893774607857,
+  "threshold_clickbait": 0.8949999999999999,
+  "test_size": 1466,
+  "dataset_unique_size": 14656,
+  "duplicatas_removidas": 349
+}
