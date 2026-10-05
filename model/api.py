@@ -6,12 +6,12 @@ Uso:
   python model/api.py
 
   # Opção 2 — via uvicorn (recarrega automaticamente em dev)
-  uvicorn model.api:app --host 0.0.0.0 --port 8000 --reload
+  uvicorn model.api:app --host 127.0.0.1 --port 8000 --reload
 
 Variáveis de ambiente:
   MODEL_DIR  Caminho para o diretório com o modelo treinado.
              Padrão: model/modelo_bertimbau_clickbait
-  API_HOST   Host em que a API escuta. Padrão: 0.0.0.0
+  API_HOST   Host em que a API escuta. Padrão: 127.0.0.1
   API_PORT   Porta em que a API escuta. Padrão: 8000
 """
 
@@ -33,7 +33,7 @@ app = criar_api(MODEL_DIR)
 if __name__ == "__main__":
     import uvicorn
 
-    host = os.getenv("API_HOST", "0.0.0.0")
+    host = os.getenv("API_HOST", "127.0.0.1")
     port = int(os.getenv("API_PORT", "8000"))
 
     print(f"Iniciando API em http://{host}:{port}")

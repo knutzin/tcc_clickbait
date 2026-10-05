@@ -1,92 +1,93 @@
-/**
- * popup.js — Lógica do popup da extensão
- *
- * Ao abrir o popup:
- *  1. Verifica o status da API via Service Worker
- *  2. Carrega os contadores do chrome.storage
- *  3. Habilita os botões de ação
- */
+// Popup — mostra saúde da API, contadores e permite verificar a página aberta.
 
-const elStatus      = document.getElementById("api-status");
-const elTotal       = document.getElementById("stat-total");
-const elClickbaits  = document.getElementById("stat-clickbaits");
-const elPct         = document.getElementById("stat-pct");
-const elOfflineTip  = document.getElementById("offline-tip");
-const btnVerificar  = document.getElementById("btn-verificar");
-const btnReset      = document.getElementById("btn-reset");
+const elStatus = document.getElementById("api-status");
+const elTotal = document.getElementById("stat-total");
+const elClickbaits = document.getElementById("stat-clickbaits");
+const elPct = document.getElementById("stat-pct");
+const elOfflineTip = document.getElementById("offline-tip");
+const btnVerificar = document.getElementById("btn-verificar");
+const btnReset = document.getElementById("btn-reset");
+let statusGeneration = 0;
 
-// ─── Inicialização ────────────────────────────────────────────────────────────
-
-inicializar();
-
-async function inicializar() {
-  await Promise.all([verificarAPI(), carregarStats()]);
+function mostrarErro(mensagem) {
+  statusGeneration += 1;
+  elStatus.textContent = `🔴 Falha: ${mensagem}`;
+  elStatus.className = "status-text status-offline";
 }
 
-// ─── Status da API ────────────────────────────────────────────────────────────
-
 async function verificarAPI() {
-  const resposta = await chrome.runtime.sendMessage({ type: "CHECK_HEALTH" });
-
-  if (resposta?.online) {
-    elStatus.textContent = "🟢 Online";
-    elStatus.className = "status-text status-online";
-    elOfflineTip.style.display = "none";
-    btnVerificar.disabled = false;
-  } else {
-    elStatus.textContent = "🔴 Offline";
-    elStatus.className = "status-text status-offline";
+  const generation = statusGeneration;
+  try {
+    const resposta = await chrome.runtime.sendMessage({ type: "CHECK_HEALTH" });
+    if (generation !== statusGeneration) return;
+    if (resposta?.online) {
+      elStatus.textContent = "🟢 Online";
+      elStatus.className = "status-text status-online";
+      elOfflineTip.style.display = "none";
+    } else {
+      elStatus.textContent = "🔴 Offline";
+      elStatus.className = "status-text status-offline";
+      elOfflineTip.style.display = "block";
+    }
+  } catch (_) {
+    if (generation !== statusGeneration) return;
+    mostrarErro("não foi possível consultar a API");
     elOfflineTip.style.display = "block";
-    btnVerificar.disabled = true;
   }
 }
 
-// ─── Estatísticas ─────────────────────────────────────────────────────────────
-
-async function carregarStats() {
-  const stats = await chrome.runtime.sendMessage({ type: "GET_STATS" });
-  renderizarStats(stats);
-}
-
 function renderizarStats({ total, clickbaits }) {
-  elTotal.textContent      = total;
+  elTotal.textContent = total;
   elClickbaits.textContent = clickbaits;
-  elPct.textContent        = total > 0
+  elPct.textContent = total > 0
     ? `${((clickbaits / total) * 100).toFixed(1)}%`
     : "—";
 }
 
-// ─── Botões ───────────────────────────────────────────────────────────────────
+async function carregarStats() {
+  try {
+    const stats = await chrome.runtime.sendMessage({ type: "GET_STATS" });
+    if (stats?.error) throw new Error(stats.error);
+    renderizarStats(stats);
+  } catch (_) {
+    mostrarErro("não foi possível ler os contadores");
+  }
+}
 
-// Injeta o content script na aba atual e aciona a classificação
-btnVerificar.addEventListener("click", async () => {
-  btnVerificar.disabled = true;
-  btnVerificar.textContent = "Verificando…";
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  // Injeta o script para forçar uma nova varredura
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => {
-      // Remove a marcação dos elementos já verificados para forçar nova rodada
-      document.querySelectorAll("[data-cb-checked]").forEach((el) => {
-        el.removeAttribute("data-cb-checked");
-      });
-      document.querySelectorAll(".cb-badge").forEach((b) => b.remove());
-    },
-  });
-
-  // Aguarda o content script retomar via MutationObserver
-  await new Promise((r) => setTimeout(r, 1200));
-  await carregarStats();
-
-  btnVerificar.disabled = false;
-  btnVerificar.textContent = "▶ Verificar página agora";
+verificarAPI();
+carregarStats();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.total || changes.clickbaits)) carregarStats();
 });
 
-// Zera os contadores
+btnVerificar.addEventListener("click", async () => {
+  statusGeneration += 1;
+  btnVerificar.disabled = true;
+  btnVerificar.textContent = "Verificando…";
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error("nenhuma página disponível");
+    const resposta = await chrome.tabs.sendMessage(tab.id, { type: "RECHECK_PAGE" });
+    if (!resposta?.success) throw new Error(resposta?.error || "não foi possível verificar a página");
+    await carregarStats();
+    await verificarAPI();
+  } catch (_) {
+    mostrarErro("não foi possível verificar esta página");
+  } finally {
+    btnVerificar.disabled = false;
+    btnVerificar.textContent = "▶ Verificar página agora";
+  }
+});
+
 btnReset.addEventListener("click", async () => {
-  await chrome.runtime.sendMessage({ type: "RESET_STATS" });
-  renderizarStats({ total: 0, clickbaits: 0 });
+  btnReset.disabled = true;
+  try {
+    const resposta = await chrome.runtime.sendMessage({ type: "RESET_STATS" });
+    if (!resposta?.success) throw new Error(resposta?.error || "falha ao zerar");
+    await carregarStats();
+  } catch (_) {
+    mostrarErro("não foi possível zerar os contadores");
+  } finally {
+    btnReset.disabled = false;
+  }
 });

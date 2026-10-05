@@ -32,7 +32,7 @@ pip install -r model/requirements.txt
 python model/api.py
 ```
 
-A API sobe em `http://localhost:8000`. Endpoints disponíveis:
+A API sobe em `http://127.0.0.1:8000` (apenas nesta máquina). Endpoints disponíveis:
 
 | Método | Rota               | Descrição                          |
 |--------|--------------------|------------------------------------|
@@ -71,5 +71,7 @@ python model/clickbait_bertimbau_v3.py train \
 | Variável   | Padrão                               | Descrição                       |
 |------------|--------------------------------------|---------------------------------|
 | `MODEL_DIR`| `model/modelo_bertimbau_clickbait`   | Caminho do modelo treinado      |
-| `API_HOST` | `0.0.0.0`                            | Host da API                     |
+| `API_HOST` | `127.0.0.1`                          | Host da API (apenas esta máquina) |
 | `API_PORT` | `8000`                               | Porta da API                    |
+
+A extensão acessa a API local por `127.0.0.1`. Para disponibilizá-la remotamente no futuro, será necessário configurar HTTPS, autenticação, permissões da extensão e limites de requisição; alterar somente `API_HOST` não protege o serviço.

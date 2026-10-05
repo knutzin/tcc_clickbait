@@ -467,7 +467,6 @@ def classificar_csv(
 # ForwardRefs corretamente quando os modelos são usados com Body().
 try:
     from fastapi import Body, FastAPI, HTTPException
-    from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel, Field, field_validator
 
     class HeadlineRequest(BaseModel):
@@ -495,16 +494,6 @@ def criar_api(model_dir: str):
     app = FastAPI(
         title="API de Classificação de Clickbait - BERTimbau",
         version="1.0.0",
-    )
-
-    # Durante os testes, a API aceita chamadas de qualquer origem.
-    # Depois, pode ser limitado ao ID da extensão do Chrome.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["GET", "POST"],
-        allow_headers=["*"],
     )
 
     @app.get("/health")
@@ -572,7 +561,7 @@ def criar_parser():
 
     serve_parser = subparsers.add_parser("serve")
     serve_parser.add_argument("--model-dir", required=True)
-    serve_parser.add_argument("--host", default="0.0.0.0")
+    serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8000)
 
     classify_parser = subparsers.add_parser("classify")

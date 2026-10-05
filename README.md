@@ -9,8 +9,7 @@ tcc_clickbait/
 ├── model/          # Modelo BERTimbau + API FastAPI
 ├── extension/      # Extensão Chrome para classificação em tempo real
 ├── data/           # Dataset de manchetes
-├── notebooks/      # Experimentos e análises
-└── PLANO_EXTENSAO.md  # Documento de arquitetura
+└── notebooks/      # Experimentos e análises
 ```
 
 ## Início rápido
@@ -23,7 +22,7 @@ tcc_clickbait/
 
 # Inicie a API
 python model/api.py
-# → http://localhost:8000/health
+# → http://127.0.0.1:8000/health
 ```
 
 ### 2. Instalar a extensão no Chrome

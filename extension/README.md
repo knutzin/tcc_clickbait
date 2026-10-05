@@ -9,7 +9,7 @@ A extensão **não** roda o modelo dentro do navegador. Ela se comunica com a AP
 ```bash
 # Na raiz do projeto:
 python model/api.py
-# → API disponível em http://localhost:8000
+# → API disponível em http://127.0.0.1:8000 (apenas nesta máquina)
 ```
 
 ## Instalação da extensão (modo desenvolvedor)
@@ -24,10 +24,10 @@ python model/api.py
 
 1. Inicie a API: `python model/api.py`
 2. Abra qualquer site de notícias (G1, UOL, Folha, etc.)
-3. As manchetes serão classificadas automaticamente em ~1–2 segundos:
+3. Títulos em artigos e links de notícia serão classificados conforme o tempo de resposta do modelo:
    - **⚠️ Clickbait (XX%)** — vermelho
    - **✓ Legítima** — verde
-4. Clique no ícone da extensão para ver as estatísticas da sessão
+4. Clique no ícone da extensão para consultar totais desde o último reset. Se a API estava offline, a extensão tenta novamente algumas vezes; use **Verificar página agora** para tentar de novo sem recarregar a aba.
 
 ## Estrutura
 
@@ -61,8 +61,12 @@ extension/
 [service_worker.js]
        │ POST /classificar-lote
        ▼
-[API FastAPI localhost:8000]
+[API FastAPI 127.0.0.1:8000]
        │ BERTimbau (PyTorch)
        ▼
-[service_worker.js] → badges aplicados nas manchetes
+[service_worker.js] → resultados e contadores persistidos
+       ▼
+[content_script.js] → badges ao lado das manchetes
 ```
+
+A seleção identifica títulos usando tags de cabeçalho (`h1` a `h4`) e classes jornalísticas comuns (`.feed-post-link`, `[class*='headline']`, `[class*='title']`, etc.), descartando menus de navegação, rodapés, barras laterais e metadados de autoria. Elementos aninhados são deduplicados para evitar badges duplicados. A API remota não é suportada nesta versão: para disponibilizá-la remotamente no futuro, configure HTTPS, autenticação e permissões da extensão, sem apenas abrir a porta local.

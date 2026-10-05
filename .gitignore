@@ -35,3 +35,4 @@ Thumbs.db
 # Logs e temporários
 *.log
 *.tmp
+.pi/

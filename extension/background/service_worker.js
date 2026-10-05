@@ -1,97 +1,124 @@
-/**
- * service_worker.js — Background Service Worker (Manifest V3)
- *
- * Responsabilidades:
- *  1. Receber lotes de manchetes do Content Script via chrome.runtime.sendMessage
- *  2. Enviar POST para a API FastAPI local em localhost:8000
- *  3. Devolver os resultados ao Content Script
- *  4. Manter contadores globais (total verificado / total clickbait) no chrome.storage
- */
+// Service Worker — comunica o content script com a API local e mantém os contadores.
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://127.0.0.1:8000";
 const API_LOTE = `${API_BASE}/classificar-lote`;
 const API_HEALTH = `${API_BASE}/health`;
+const STATS_DEFAULT = { total: 0, clickbaits: 0 };
 
-// ─── Listener principal ───────────────────────────────────────────────────────
+let filaStats = Promise.resolve();
+let geracaoStats = 0;
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+function enfileirarStats(operacao) {
+  const resultado = filaStats.then(operacao);
+  filaStats = resultado.catch((err) => {
+    console.warn("[Clickbait Detector] Erro nos contadores:", err);
+  });
+  return resultado;
+}
 
-  // Classifica um lote de manchetes
-  if (request.type === "CLASSIFY_BATCH") {
-    classificarLote(request.titulos)
-      .then((resultados) => {
-        atualizarContadores(resultados);
-        sendResponse({ success: true, resultados });
-      })
-      .catch((err) => {
-        console.warn("[Clickbait Detector] Erro ao classificar:", err.message);
-        sendResponse({ success: false, error: err.message });
-      });
-    return true; // mantém o canal aberto para a resposta assíncrona
-  }
-
-  // Verifica se a API está no ar (usado pelo popup)
-  if (request.type === "CHECK_HEALTH") {
-    fetch(API_HEALTH)
-      .then((r) => r.json())
-      .then((data) => sendResponse({ online: true, data }))
-      .catch(() => sendResponse({ online: false }));
-    return true;
-  }
-
-  // Retorna os contadores armazenados (usado pelo popup)
-  if (request.type === "GET_STATS") {
-    chrome.storage.local.get({ total: 0, clickbaits: 0 }, (stats) => {
-      sendResponse(stats);
+function lerStats() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(STATS_DEFAULT, (stats) => {
+      const erro = chrome.runtime.lastError;
+      if (erro) reject(new Error(erro.message));
+      else resolve(stats);
     });
-    return true;
-  }
+  });
+}
 
-  // Zera os contadores (usado pelo popup)
-  if (request.type === "RESET_STATS") {
-    chrome.storage.local.set({ total: 0, clickbaits: 0 }, () => {
-      sendResponse({ success: true });
+function gravarStats(stats) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(stats, () => {
+      const erro = chrome.runtime.lastError;
+      if (erro) reject(new Error(erro.message));
+      else resolve();
     });
-    return true;
-  }
-});
+  });
+}
 
-// ─── Funções auxiliares ───────────────────────────────────────────────────────
+function atualizarContadores(resultados, geracao) {
+  return enfileirarStats(async () => {
+    if (geracao !== geracaoStats) return;
+    const stats = await lerStats();
+    if (geracao !== geracaoStats) return;
+    await gravarStats({
+      total: stats.total + resultados.length,
+      clickbaits: stats.clickbaits + resultados.filter((r) => r.clickbait_label_bot === 1).length,
+    });
+  });
+}
 
-/**
- * Envia um lote de manchetes para a API e retorna os resultados.
- * @param {string[]} titulos
- * @returns {Promise<object[]>}
- */
+function opcoesFetch() {
+  return typeof AbortSignal !== "undefined" && AbortSignal.timeout
+    ? { signal: AbortSignal.timeout(20000) }
+    : {};
+}
+
 async function classificarLote(titulos) {
+  if (!Array.isArray(titulos) || titulos.length < 1 || titulos.length > 50 ||
+      titulos.some((titulo) => typeof titulo !== "string" || !titulo.trim() || titulo.length > 1000)) {
+    throw new Error("Lote de manchetes inválido.");
+  }
+
   const response = await fetch(API_LOTE, {
+    ...opcoesFetch(),
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ titulos }),
   });
 
   if (!response.ok) {
-    const texto = await response.text();
-    throw new Error(`API retornou ${response.status}: ${texto}`);
+    throw new Error(`API retornou ${response.status}`);
   }
 
   const data = await response.json();
+  if (!Array.isArray(data.resultados) || data.resultados.length !== titulos.length ||
+      data.resultados.some((r) => !r || ![0, 1].includes(r.clickbait_label_bot) ||
+        typeof r.probabilidade_clickbait !== "number" ||
+        r.probabilidade_clickbait < 0 || r.probabilidade_clickbait > 1)) {
+    throw new Error("Resposta inválida da API.");
+  }
   return data.resultados;
 }
 
-/**
- * Incrementa os contadores de manchetes verificadas e clickbaits detectados.
- * @param {object[]} resultados
- */
-function atualizarContadores(resultados) {
-  const novosClickbaits = resultados.filter(
-    (r) => r.clickbait_label_bot === 1
-  ).length;
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.type === "CLASSIFY_BATCH") {
+    const geracao = geracaoStats;
+    classificarLote(request.titulos)
+      .then(async (resultados) => {
+        await atualizarContadores(resultados, geracao);
+        sendResponse({ success: true, resultados });
+      })
+      .catch((err) => {
+        console.warn("[Clickbait Detector] Erro ao classificar:", err.message);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  }
 
-  chrome.storage.local.get({ total: 0, clickbaits: 0 }, (stats) => {
-    chrome.storage.local.set({
-      total: stats.total + resultados.length,
-      clickbaits: stats.clickbaits + novosClickbaits,
-    });
-  });
-}
+  if (request.type === "CHECK_HEALTH") {
+    fetch(API_HEALTH, opcoesFetch())
+      .then(async (response) => {
+        if (!response.ok) throw new Error("API indisponível");
+        const data = await response.json();
+        sendResponse({ online: data?.status === "ok", data });
+      })
+      .catch(() => sendResponse({ online: false }));
+    return true;
+  }
+
+  if (request.type === "GET_STATS") {
+    enfileirarStats(lerStats)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ ...STATS_DEFAULT, error: err.message }));
+    return true;
+  }
+
+  if (request.type === "RESET_STATS") {
+    geracaoStats += 1;
+    enfileirarStats(() => gravarStats(STATS_DEFAULT))
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+});

@@ -2,15 +2,14 @@
   "manifest_version": 3,
   "name": "Detector de Clickbait",
   "version": "1.0.0",
-  "description": "Classifica manchetes de notícias em tempo real usando BERTimbau. Requer a API local rodando em localhost:8000.",
+  "description": "Classifica manchetes de notícias em tempo real usando BERTimbau. Requer a API local rodando em 127.0.0.1:8000.",
 
   "permissions": [
     "activeTab",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
-    "http://localhost:8000/*"
+    "http://127.0.0.1:8000/*"
   ],
 
   "background": {
