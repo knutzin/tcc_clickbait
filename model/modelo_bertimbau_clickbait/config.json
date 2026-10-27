@@ -13,7 +13,7 @@
   "hidden_dropout_prob": 0.1,
   "hidden_size": 768,
   "id2label": {
-    "0": "LEGITIMA",
+    "0": "NAO_CLICKBAIT",
     "1": "CLICKBAIT"
   },
   "initializer_range": 0.02,
@@ -21,7 +21,7 @@
   "is_decoder": false,
   "label2id": {
     "CLICKBAIT": 1,
-    "LEGITIMA": 0
+    "NAO_CLICKBAIT": 0
   },
   "layer_norm_eps": 1e-12,
   "max_position_embeddings": 512,

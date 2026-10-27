@@ -236,7 +236,7 @@ def treinar_bertimbau(
 
     tokenizer = AutoTokenizer.from_pretrained(MODELO_BASE, do_lower_case=False,)
 
-    model = AutoModelForSequenceClassification.from_pretrained(MODELO_BASE, num_labels=2, id2label={0: "LEGITIMA", 1: "CLICKBAIT"}, label2id={"LEGITIMA": 0, "CLICKBAIT": 1},)
+    model = AutoModelForSequenceClassification.from_pretrained(MODELO_BASE, num_labels=2, id2label={0: "NAO_CLICKBAIT", 1: "CLICKBAIT"}, label2id={"NAO_CLICKBAIT": 0, "CLICKBAIT": 1},)
 
     dados_treino = DatasetTitulos(df_treino[COLUNA_TITULO], df_treino[COLUNA_ROTULO], tokenizer,)
     dados_validacao = DatasetTitulos(df_validacao[COLUNA_TITULO], df_validacao[COLUNA_ROTULO], tokenizer,)
@@ -345,7 +345,7 @@ def treinar_bertimbau(
             indent=2,
         )
 
-    pd.DataFrame(cm, index=["real_0_legitima", "real_1_clickbait"], columns=["pred_0_legitima", "pred_1_clickbait"],).to_csv(model_dir / "confusion_matrix.csv", encoding="utf-8",)
+    pd.DataFrame(cm, index=["real_0_nao_clickbait", "real_1_clickbait"], columns=["pred_0_nao_clickbait", "pred_1_clickbait"],).to_csv(model_dir / "confusion_matrix.csv", encoding="utf-8",)
 
     # Salva os conjuntos usados no treinamento, validação e teste.
     df_treino.to_csv(output_dir / "split_train.csv", index=False, sep=";")
