@@ -189,7 +189,10 @@ function matchesSelector(node, sel) {
     return node.getAttribute(sel.slice(1, sel.indexOf("=")))?.includes(sel.includes("Article") ? "Article" : sel.includes("navigation") ? "navigation" : "main");
   }
   if (sel === "a[href]") return node.tagName === "A" && node.hasAttribute("href");
-  if (sel === "[itemprop~='author']") return (node.getAttribute("itemprop") || "").split(/\s+/).includes("author");
+  if (sel === "[itemprop~='author']" || sel === "[rel~='author']") {
+    const attrName = sel.startsWith("[rel") ? "rel" : "itemprop";
+    return (node.getAttribute(attrName) || "").split(/\s+/).includes("author");
+  }
   // Tag selector
   if (/^[a-zA-Z][a-zA-Z0-9]*$/.test(sel)) {
     return node.tagName === sel.toUpperCase();
@@ -201,7 +204,7 @@ function matchesSelector(node, sel) {
   // [attr*='v']
   let m = sel.match(/^\[([a-zA-Z_-]+)\*=['"]([^'"]+)['"]\]$/);
   if (m) {
-    const v = node.attrs[m[1]] || "";
+    const v = (m[1] === "class" ? node.className : node.attrs[m[1]]) || "";
     return v.includes(m[2]);
   }
   // [attr='v']
@@ -437,7 +440,7 @@ test("news link card is classified (not just h1 elements)", async () => {
   );
 });
 
-test("main accepts linked heading once but ignores generic section headings", async () => {
+test("main accepts headings and deduplicates nested links inside headings", async () => {
   const { sent } = loadScript({
     buildDom: (doc) => {
       const main = doc.createElement("main");
@@ -456,15 +459,19 @@ test("main accepts linked heading once but ignores generic section headings", as
   });
   await flush();
   const titulos = sent.filter((m) => m.type === "CLASSIFY_BATCH").flatMap((m) => m.titulos);
-  assert.deepEqual(titulos, ["Ministério anuncia novas medidas para melhorar ensino público"]);
+  assert.deepEqual(titulos, [
+    "Explore as principais editorias e serviços do portal",
+    "Ministério anuncia novas medidas para melhorar ensino público",
+  ]);
 });
 
-test("unmarked linked main heading is not mistaken for a headline", async () => {
+test("linked heading is deduplicated to a single candidate", async () => {
   const { sent } = loadScript({
     buildDom: (doc) => {
       const main = doc.createElement("main");
       const link = doc.createElement("a");
       link.setAttribute("href", "/editorias");
+      addClass(link, "headline");
       const h2 = doc.createElement("h2");
       setText(h2, "Conheça todas as editorias e serviços disponíveis neste portal");
       link.appendChild(h2);
@@ -473,16 +480,26 @@ test("unmarked linked main heading is not mistaken for a headline", async () => 
     },
   });
   await flush();
-  assert.equal(sent.filter((msg) => msg.type === "CLASSIFY_BATCH").length, 0);
+  const titulos = sent.filter((m) => m.type === "CLASSIFY_BATCH").flatMap((m) => m.titulos);
+  assert.deepEqual(titulos, ["Conheça todas as editorias e serviços disponíveis neste portal"]);
 });
 
-test("main section heading is ignored without article or news link", async () => {
+test("kicker and standfirst headings are ignored", async () => {
   const { sent } = loadScript({
     buildDom: (doc) => {
       const main = doc.createElement("main");
+      const kicker = doc.createElement("div");
+      addClass(kicker, "kicker");
       const h2 = doc.createElement("h2");
       setText(h2, "Explore as principais editorias e serviços do portal");
-      main.appendChild(h2);
+      kicker.appendChild(h2);
+      main.appendChild(kicker);
+      const standfirst = doc.createElement("div");
+      addClass(standfirst, "linha-fina");
+      const h3 = doc.createElement("h3");
+      setText(h3, "Resumo completo das medidas anunciadas pelo governo federal");
+      standfirst.appendChild(h3);
+      main.appendChild(standfirst);
       doc.body.appendChild(main);
     },
   });
@@ -490,7 +507,7 @@ test("main section heading is ignored without article or news link", async () =>
   assert.equal(sent.filter((msg) => msg.type === "CLASSIFY_BATCH").length, 0);
 });
 
-test("article h1 suppresses unlinked unmarked secondary heading", async () => {
+test("article classifies both h1 and valid secondary h2 headlines", async () => {
   const { sent } = loadScript({
     buildDom: (doc) => {
       const article = doc.createElement("article");
@@ -505,7 +522,10 @@ test("article h1 suppresses unlinked unmarked secondary heading", async () => {
   });
   await flush();
   const titles = sent.filter((m) => m.type === "CLASSIFY_BATCH").flatMap((m) => m.titulos);
-  assert.deepEqual(titles, ["Senado aprova novas medidas de segurança nas estradas do país"]);
+  assert.deepEqual(titles, [
+    "Senado aprova novas medidas de segurança nas estradas do país",
+    "Veja também outras matérias interessantes da nossa redação",
+  ]);
 });
 
 test("unmarked article metadata links are not submitted as headlines", async () => {
@@ -779,11 +799,14 @@ test("moving a classified headline preserves badge beside its new position", asy
   fireTimers(pendingTimers);
   await flush();
   assert.equal(calls, 1);
-  assert.equal(badge.parentElement, second);
-  assert.equal(badge.nextSibling, h2);
+  assert.equal(h2.parentElement, second);
+  assert.equal(badge.parentElement, h2);
+  assert.equal(h2.firstChild, badge);
+  assert.equal(badge.textContent, "✓ Não Clickbait");
+  assert.match(badge.title, /Sem indícios de clickbait segundo o modelo/);
 });
 
-test("moving a wrapper keeps descendant headline badge adjacent", async () => {
+test("moving a wrapper keeps descendant headline badge inline", async () => {
   let calls = 0;
   const { doc, observerHolder, pendingTimers } = loadScript({
     buildDom: (d) => {
@@ -816,8 +839,75 @@ test("moving a wrapper keeps descendant headline badge adjacent", async () => {
   fireTimers(pendingTimers);
   await flush();
   assert.equal(calls, 1);
-  assert.equal(badge.parentElement, wrapper);
-  assert.equal(badge.nextSibling, h2);
+  assert.equal(wrapper.parentElement, second);
+  assert.equal(badge.parentElement, h2);
+  assert.equal(h2.firstChild, badge);
+});
+
+test("clickbait and non-clickbait badges display neutral labels and score only in tooltip", async () => {
+  const { doc } = loadScript({
+    buildDom: (d) => {
+      const article = d.createElement("article");
+      const h1 = d.createElement("h1");
+      setText(h1, "Você não vai acreditar no que aconteceu nesta sessão do Congresso");
+      const h2 = d.createElement("h2");
+      setText(h2, "Senado aprova orçamento para obras de infraestrutura em 2026");
+      article.appendChild(h1);
+      article.appendChild(h2);
+      d.body.appendChild(article);
+    },
+    messageImpl: () => ({
+      success: true,
+      resultados: [
+        { clickbait_label_bot: 1, probabilidade_clickbait: 0.964 },
+        { clickbait_label_bot: 0, probabilidade_clickbait: 0.012 },
+      ],
+    }),
+  });
+  await flush();
+  const badges = findBadges(doc);
+  assert.equal(badges.length, 2);
+  assert.equal(badges[0].textContent, "⚠️ Clickbait");
+  assert.match(badges[0].title, /Indícios de clickbait segundo o modelo \(escore: 96\.4%/);
+  assert.equal(badges[1].textContent, "✓ Não Clickbait");
+  assert.match(badges[1].title, /Sem indícios de clickbait segundo o modelo \(escore: 1\.2%/);
+});
+
+test("CSS uppercase innerText does not corrupt cased headline or drop badge on mutation", async () => {
+  let calls = 0;
+  let h1;
+  const { doc, observerHolder, pendingTimers } = loadScript({
+    buildDom: (d) => {
+      const article = d.createElement("article");
+      h1 = d.createElement("h1");
+      setText(h1, "Halloween nos hotéis de Socorro terá festas à fantasia");
+      // Simulate CSS text-transform: uppercase on connected element's innerText
+      Object.defineProperty(h1, "innerText", {
+        get() { return this.textContent.toUpperCase(); },
+      });
+      article.appendChild(h1);
+      d.body.appendChild(article);
+    },
+    messageImpl: (msg) => {
+      calls += 1;
+      return {
+        success: true,
+        resultados: msg.titulos.map(() => ({
+          clickbait_label_bot: 0,
+          probabilidade_clickbait: 0.04,
+        })),
+      };
+    },
+  });
+  await flush();
+  assert.equal(calls, 1);
+  assert.equal(findBadges(doc).filter((b) => b.isConnected).length, 1);
+  // Trigger a page mutation; the badge must remain attached and not re-trigger classification
+  observerHolder.current.trigger();
+  fireTimers(pendingTimers);
+  await flush();
+  assert.equal(calls, 1);
+  assert.equal(findBadges(doc).filter((b) => b.isConnected).length, 1);
 });
 
 test("shortened SPA headline loses obsolete badge", async () => {

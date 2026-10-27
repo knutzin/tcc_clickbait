@@ -35,7 +35,7 @@ python model/api.py
 
 As manchetes são classificadas automaticamente com badges visuais:
 - **⚠️ Clickbait** (vermelho)
-- **✓ Legítima** (verde)
+- **✓ Não Clickbait** (verde)
 
 ## Módulos
 

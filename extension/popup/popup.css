@@ -151,3 +151,12 @@ footer {
   font-size: 11px;
   word-break: break-all;
 }
+
+/* ─── Aviso metodológico ─────────────────────────────────────────────────────── */
+.disclaimer {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #7f8c8d;
+  text-align: center;
+  padding: 2px 4px 0;
+}

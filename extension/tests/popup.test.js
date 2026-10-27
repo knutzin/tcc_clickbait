@@ -176,10 +176,11 @@ test("manifest: loopback host and only activeTab/storage permissions", () => {
   assert.equal(MANIFEST.manifest_version, 3);
 });
 
-test("popup describes persistent counters", () => {
+test("popup describes persistent counters and methodological disclaimer", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "popup", "popup.html"), "utf8");
   assert.match(html, /Desde o último reset/);
   assert.doesNotMatch(html, /Esta sessão/);
+  assert.match(html, /Classificação automatizada do título \(sujeita a erro\)\. Não verifica a veracidade da notícia\./);
 });
 
 // ─── Online path ─────────────────────────────────────────────────────────────

@@ -25,8 +25,8 @@ python model/api.py
 1. Inicie a API: `python model/api.py`
 2. Abra qualquer site de notícias (G1, UOL, Folha, etc.)
 3. Títulos em artigos e links de notícia serão classificados conforme o tempo de resposta do modelo:
-   - **⚠️ Clickbait (XX%)** — vermelho
-   - **✓ Legítima** — verde
+   - **⚠️ Clickbait** — vermelho (escore do modelo exibido ao passar o mouse)
+   - **✓ Não Clickbait** — verde (escore do modelo exibido ao passar o mouse)
 4. Clique no ícone da extensão para consultar totais desde o último reset. Se a API estava offline, a extensão tenta novamente algumas vezes; use **Verificar página agora** para tentar de novo sem recarregar a aba.
 
 ## Estrutura

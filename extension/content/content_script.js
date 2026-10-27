@@ -18,6 +18,7 @@
     ".feed-post-link",
     ".feed-post-body-title",
     ".chamada > a",
+    "[itemprop='headline']",
     "a[class*='headline']",
     "a[class*='title']",
   ].join(",");
@@ -40,16 +41,34 @@
   let falhas = 0;
   let aguardandoRetry = false;
 
+  function textoSemBadges(node) {
+    if (!node) return "";
+    if (node.nodeType === 3) return node.data || node.textContent || "";
+    if (node.nodeType !== 1) return "";
+    if (node.classList?.contains("cb-badge") || node.classList?.contains("cb-badge-wrapper")) {
+      return "";
+    }
+    if (node.childNodes && node.childNodes.length) {
+      return Array.from(node.childNodes).map(textoSemBadges).join("");
+    }
+    return node.textContent || node.innerText || "";
+  }
+
   function limparTexto(el) {
     if (!el) return "";
-    // Se o elemento contiver badges próprios, clona e remove antes de extrair o texto
+    // Se o elemento contiver badges próprios, clona e remove antes de extrair o texto.
+    // Usa textContent antes de innerText para preservar a caixa original do HTML
+    // (evitando que CSS text-transform: uppercase altere o texto em elementos conectados).
     const badgesInternos = el.querySelectorAll?.(".cb-badge, .cb-badge-wrapper");
     if (badgesInternos && badgesInternos.length > 0) {
-      const clone = el.cloneNode(true);
-      clone.querySelectorAll(".cb-badge, .cb-badge-wrapper").forEach((b) => b.remove());
-      return (clone.innerText || clone.textContent || "").replace(/\s+/g, " ").trim();
+      if (typeof el.cloneNode === "function") {
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll(".cb-badge, .cb-badge-wrapper").forEach((b) => b.remove());
+        return (clone.textContent || clone.innerText || "").replace(/\s+/g, " ").trim();
+      }
+      return textoSemBadges(el).replace(/\s+/g, " ").trim();
     }
-    return (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+    return (el.textContent || el.innerText || "").replace(/\s+/g, " ").trim();
   }
 
   function tipoCandidato(el) {
@@ -60,10 +79,8 @@
 
     // 2. Descarta cabeçalho principal de navegação do site (mas permite cabeçalhos de notícias/artigos)
     const header = el.closest("header");
-    if (header && (header.querySelector?.("nav") || header.className?.includes("site-header") || header.className?.includes("main-header"))) {
-      if (!el.closest("article, [class*='post'], [class*='feed'], [class*='materia']")) {
-        return false;
-      }
+    if (header && !el.closest("article, [class*='post'], [class*='feed'], [class*='materia']")) {
+      return false;
     }
 
     // 3. Descarta chapéus / kickers / retrancas / editorias (ex: "INFRAESTRUTURA", "OPINIÃO", "ELEIÇÕES 2026")
@@ -105,11 +122,6 @@
         continue;
       }
 
-      // Se não for forçado e já foi verificado, pula para nunca reprocessar o mesmo elemento
-      if (!forcar && el.hasAttribute(ATTR_CHECKED)) {
-        continue;
-      }
-
       if (!tipoCandidato(el)) continue;
 
       const textoAtual = limparTexto(el);
@@ -119,6 +131,13 @@
         classificados.delete(el);
         bloqueados.delete(el);
         el.removeAttribute(ATTR_CHECKED);
+      } else if (el.hasAttribute(ATTR_CHECKED)) {
+        if (pendentes.has(el) || classificados.get(el) === textoAtual) {
+          continue;
+        }
+        removerBadge(el);
+        classificados.delete(el);
+        bloqueados.delete(el);
       }
 
       // Deduplicação: se um elemento contém ou é contido por outro candidato:
@@ -170,14 +189,13 @@
 
     const isClickbait = resultado.clickbait_label_bot === 1;
     const pct = (resultado.probabilidade_clickbait * 100).toFixed(1);
-    const confianca = isClickbait ? pct : (100 - parseFloat(pct)).toFixed(1);
 
     const badge = document.createElement("span");
     badge.className = isClickbait ? "cb-badge cb-sim" : "cb-badge cb-nao";
     badge.title = isClickbait
-      ? `Provável clickbait — confiança: ${pct}%`
-      : `Notícia legítima — confiança: ${confianca}%`;
-    badge.textContent = isClickbait ? `⚠️ Clickbait (${pct}%)` : "✓ Legítima";
+      ? `Indícios de clickbait segundo o modelo (escore: ${pct}% — classificação automatizada, sujeita a erro)`
+      : `Sem indícios de clickbait segundo o modelo (escore: ${pct}% — classificação automatizada, sujeita a erro)`;
+    badge.textContent = isClickbait ? "⚠️ Clickbait" : "✓ Não Clickbait";
 
     // Inserção inline como primeiro filho do elemento (mantém estilo fluído)
     try {
@@ -187,6 +205,7 @@
         el.parentElement.insertBefore(badge, el);
       }
     }
+    el.setAttribute(ATTR_CHECKED, "1");
     badges.set(el, badge);
   }
 
@@ -228,7 +247,10 @@
         }
         resposta.resultados.forEach((resultado, idx) => {
           const el = loteNos[idx];
-          if (!el.isConnected) return;
+          if (!el.isConnected || limparTexto(el) !== loteTitulos[idx]) {
+            el.removeAttribute(ATTR_CHECKED);
+            return;
+          }
           aplicarBadge(el, resultado);
           classificados.set(el, loteTitulos[idx]);
           bloqueados.delete(el);
@@ -308,6 +330,7 @@
         }
         const removidos = [node, ...(node.querySelectorAll ? node.querySelectorAll(SELETORES) : [])];
         for (const el of removidos) {
+          if (el.isConnected) continue;
           const badge = badges.get(el);
           if (badge) {
             removerBadge(el);
